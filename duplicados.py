@@ -4,6 +4,7 @@ import imagehash
 from PIL import Image
 import io
 import subprocess
+from send2trash import send2trash
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QFileDialog,
     QListWidget, QListWidgetItem, QSlider, QMessageBox, QHBoxLayout, QAbstractItemView,
@@ -117,11 +118,7 @@ class Worker(QObject):
                 for j in range(i + 1, n):
                     if not self._isRunning:
                         break
-                    # Usar el método de resta que está implementado en ImageHash
-                    # Corregido: ahora un threshold más alto es más permisivo
-                    # La diferencia de hashes puede ser de 0 a 64 para phash
-                    # Escalamos el threshold para que 0 sea muy estricto y 20 sea muy permisivo
-                    scaled_threshold = self.threshold * 3  # Escalamos para que el rango sea 0-60
+                    scaled_threshold = self.threshold * 3  
                     if abs(hashes[i] - hashes[j]) <= scaled_threshold:
                         union(i, j)
             
@@ -700,6 +697,11 @@ class DuplicateFinder(QWidget):
         self.btn_invert_selection = QPushButton("⇄ Invertir selección")
         self.btn_invert_selection.clicked.connect(self.invert_selection)
         actions_layout.addWidget(self.btn_invert_selection)
+
+        # Auto-selección inteligente (mantener mejor resolución)
+        self.btn_autoselect_best = QPushButton("⭐ Seleccionar duplicados (mantener mejor)")
+        self.btn_autoselect_best.clicked.connect(self.autoselect_keep_best)
+        actions_layout.addWidget(self.btn_autoselect_best)
         
         # Separador
         separator = QFrame()
@@ -989,13 +991,76 @@ class DuplicateFinder(QWidget):
             deleted = 0
             for file_path in selected_files:
                 try:
-                    os.remove(file_path)
+                    send2trash(file_path)
                     deleted += 1
                 except Exception as e:
                     QMessageBox.warning(self, "Error", f"No se pudo borrar {file_path}:\n{e}")
             
             self.refresh_groups()
             QMessageBox.information(self, "Listo", f"Se eliminaron {deleted} archivos.")
+
+    def autoselect_keep_best(self):
+        """Selecciona automáticamente todos los duplicados de cada grupo
+        manteniendo sin seleccionar la imagen de mejor resolución.
+        Criterio: mayor área (ancho*alto); en empate, mayor tamaño en bytes; luego más reciente por mtime.
+        """
+        groups_processed = 0
+        for group_widget in self.group_widgets:
+            files = list(group_widget.files)
+            if len(files) < 2:
+                continue
+
+            best_file = None
+            best_area = -1
+            best_size = -1
+            best_mtime = -1
+
+            # Calcular métricas por archivo
+            for path in files:
+                width = height = 0
+                try:
+                    with Image.open(path) as img:
+                        width, height = img.size
+                except Exception:
+                    pass
+                area = width * height
+                try:
+                    size_bytes = os.path.getsize(path)
+                except Exception:
+                    size_bytes = -1
+                try:
+                    mtime = os.path.getmtime(path)
+                except Exception:
+                    mtime = -1
+
+                candidate_better = False
+                if area > best_area:
+                    candidate_better = True
+                elif area == best_area and size_bytes > best_size:
+                    candidate_better = True
+                elif area == best_area and size_bytes == best_size and mtime > best_mtime:
+                    candidate_better = True
+
+                if candidate_better:
+                    best_file = path
+                    best_area = area
+                    best_size = size_bytes
+                    best_mtime = mtime
+
+            # Aplicar selección: marcar todos excepto el mejor
+            if best_file:
+                group_widget.deselect_all()
+                for btn in group_widget.image_buttons:
+                    if hasattr(btn, 'file_path'):
+                        if btn.file_path != best_file:
+                            btn.setChecked(True)
+                            group_widget.selected_files.add(btn.file_path)
+                        else:
+                            btn.setChecked(False)
+                            group_widget.selected_files.discard(btn.file_path)
+                groups_processed += 1
+
+        QMessageBox.information(self, "Auto-selección", f"Se aplicó la auto-selección en {groups_processed} grupos.")
 
     def move_selected(self):
         selected_files = self.get_selected_files()
