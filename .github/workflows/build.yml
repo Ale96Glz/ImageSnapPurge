@@ -169,6 +169,15 @@ jobs:
         name: ImageSnapPurge-macOS
         path: macos-artifact
         
+    - name: Verify downloaded files
+      run: |
+        echo "Verifying Windows executable:"
+        ls -la windows-artifact/
+        echo "Verifying Linux executable:"
+        ls -la linux-artifact/
+        echo "Verifying macOS executable:"
+        ls -la macos-artifact/
+        
     - name: Create release
       uses: softprops/action-gh-release@v1
       with:
@@ -236,6 +245,15 @@ jobs:
       id: version
       run: echo "VERSION=$(date +'%Y.%m.%d')-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
       
+    - name: Verify downloaded files
+      run: |
+        echo "Verifying Windows executable:"
+        ls -la windows-artifact/
+        echo "Verifying Linux executable:"
+        ls -la linux-artifact/
+        echo "Verifying macOS executable:"
+        ls -la macos-artifact/
+        
     - name: Create release
       uses: softprops/action-gh-release@v1
       with:
