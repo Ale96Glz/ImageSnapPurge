@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QFileDialog,
     QListWidget, QListWidgetItem, QSlider, QMessageBox, QHBoxLayout, QAbstractItemView,
     QScrollArea, QFrame, QSizePolicy, QGroupBox, QGridLayout, QSplitter, QCheckBox,
-    QDialog
+    QDialog, QComboBox
 )
 from PyQt5.QtGui import QIcon, QPixmap, QFont, QPalette, QColor, QPainter, QPen
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject, QSize, QRect, QTimer
@@ -203,11 +203,13 @@ class CustomSlider(QSlider):
                 painter.drawLine(x, height - 15, x, height - 10)
 
 class ImageGroupWidget(QWidget):
-    def __init__(self, files, parent=None):
+    def __init__(self, files, parent=None, thumb_size=100, compact=False):
         super().__init__(parent)
         self.files = files
         self.selected_files = set()
         self.thumbnails_loaded = False
+        self.thumb_size = thumb_size
+        self.compact = compact
         
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(5, 5, 5, 5)
@@ -216,7 +218,7 @@ class ImageGroupWidget(QWidget):
         # Widget contenedor para las imágenes
         self.images_container = QWidget()
         self.images_layout = QHBoxLayout(self.images_container)
-        self.images_layout.setSpacing(10)
+        self.images_layout.setSpacing(6 if self.compact else 10)
         self.images_layout.setAlignment(Qt.AlignLeft)
         self.images_layout.setContentsMargins(0, 0, 0, 0)
         
@@ -227,7 +229,7 @@ class ImageGroupWidget(QWidget):
         
         # Ajustar el tamaño del contenedor al contenido
         self.images_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.images_container.setMinimumHeight(150)
+        self.images_container.setMinimumHeight(self.thumb_size + (40 if not self.compact else 26))
         
         self.layout.addWidget(self.images_container)
         
@@ -237,19 +239,19 @@ class ImageGroupWidget(QWidget):
     def add_image_button(self, file_path):
         try:
             btn = QPushButton()
-            btn.setFixedSize(120, 140)
+            btn.setFixedSize(self.thumb_size + 20, self.thumb_size + (40 if not self.compact else 26))
             btn.setCheckable(True)
             btn.clicked.connect(lambda checked, path=file_path: self.toggle_selection(path, checked))
             
             btn_layout = QVBoxLayout(btn)
             btn_layout.setContentsMargins(5, 5, 5, 5)
-            btn_layout.setSpacing(5)
+            btn_layout.setSpacing(3 if self.compact else 5)
             
             # Etiqueta para la imagen (inicialmente vacía)
             img_label = QLabel()
             img_label.setAlignment(Qt.AlignCenter)
-            img_label.setMinimumSize(100, 100)
-            img_label.setMaximumSize(100, 100)
+            img_label.setMinimumSize(self.thumb_size, self.thumb_size)
+            img_label.setMaximumSize(self.thumb_size, self.thumb_size)
             img_label.setStyleSheet("background-color: #f0f0f0; border: 1px dashed #ccc;")
             btn_layout.addWidget(img_label)
             
@@ -261,7 +263,7 @@ class ImageGroupWidget(QWidget):
             name_label = QLabel(filename)
             name_label.setWordWrap(True)
             name_label.setAlignment(Qt.AlignCenter)
-            name_label.setStyleSheet("font-size: 9px;")
+            name_label.setStyleSheet("font-size: 9px;" if not self.compact else "font-size: 8px;")
             btn_layout.addWidget(name_label)
             
             btn.file_path = file_path
@@ -280,7 +282,7 @@ class ImageGroupWidget(QWidget):
             try:
                 file_path = btn.file_path
                 img = Image.open(file_path)
-                img.thumbnail((100, 100))
+                img.thumbnail((self.thumb_size, self.thumb_size))
                 buffer = io.BytesIO()
                 img.save(buffer, format="PNG")
                 pixmap = QPixmap()
@@ -291,6 +293,23 @@ class ImageGroupWidget(QWidget):
                 print(f"No se pudo cargar miniatura de {file_path}: {e}")
                 btn.img_label.setText("Error")
                 btn.img_label.setStyleSheet("color: red;")
+
+    def set_thumb_size(self, size):
+        self.thumb_size = size
+        for btn in self.image_buttons:
+            btn.setFixedSize(self.thumb_size + 20, self.thumb_size + (40 if not self.compact else 26))
+            btn.img_label.setMinimumSize(self.thumb_size, self.thumb_size)
+            btn.img_label.setMaximumSize(self.thumb_size, self.thumb_size)
+        self.images_container.setMinimumHeight(self.thumb_size + (40 if not self.compact else 26))
+        self.thumbnails_loaded = False
+        self.load_thumbnails()
+
+    def set_compact(self, compact):
+        self.compact = compact
+        self.images_layout.setSpacing(6 if self.compact else 10)
+        for btn in self.image_buttons:
+            btn.setFixedSize(self.thumb_size + 20, self.thumb_size + (40 if not self.compact else 26))
+        self.images_container.setMinimumHeight(self.thumb_size + (40 if not self.compact else 26))
     
     def toggle_selection(self, file_path, selected):
         if selected:
@@ -372,11 +391,11 @@ class DuplicateFinder(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ImageSnapPurge - Eliminar duplicados de imágenes")
-        self.resize(1300, 800)
-        self.layout = QHBoxLayout(self)
+        self.resize(1100, 780)
+        self.layout = QVBoxLayout(self)
         self.setLayout(self.layout)
         self.layout.setContentsMargins(10, 10, 10, 10)
-        self.layout.setSpacing(10)
+        self.layout.setSpacing(8)
         
         # Estilo general de la ventana
         self.setStyleSheet("""
@@ -599,6 +618,21 @@ class DuplicateFinder(QWidget):
         self.exclude_subfolders.setChecked(False)
         config_layout.addWidget(self.exclude_subfolders)
         
+        # Modo compacto y tamaño de miniatura
+        compact_row = QHBoxLayout()
+        compact_row.setContentsMargins(0, 0, 0, 0)
+        self.compact_mode = QCheckBox("Modo compacto")
+        self.compact_mode.setChecked(True)
+        compact_row.addWidget(self.compact_mode)
+
+        compact_row.addStretch()
+        compact_row.addWidget(QLabel("Tamaño de miniaturas:"))
+        self.thumb_size_combo = QComboBox()
+        self.thumb_size_combo.addItems(["Pequeñas", "Medianas", "Grandes"])  # 80, 110, 140
+        self.thumb_size_combo.setCurrentIndex(1)
+        compact_row.addWidget(self.thumb_size_combo)
+        config_layout.addLayout(compact_row)
+
         # Nivel de similitud - Título de sección mejorado
         self.rigidez_title = QLabel("Nivel de similitud")
         self.rigidez_title.setProperty("class", "section-title")
@@ -675,62 +709,11 @@ class DuplicateFinder(QWidget):
         info_group.setLayout(info_layout)
         right_layout.addWidget(info_group)
         
-        # Grupo de acciones
-        actions_group = QGroupBox("Acciones:")
-        actions_layout = QVBoxLayout()
-        actions_layout.setContentsMargins(15, 20, 15, 15)
-        actions_layout.setSpacing(10)
-        
-        # Botones de selección - Título de sección mejorado
-        selection_title = QLabel("Selección")
-        selection_title.setProperty("class", "section-title")
-        actions_layout.addWidget(selection_title)
-        
-        self.btn_select_all = QPushButton("✓ Seleccionar todas")
-        self.btn_select_all.clicked.connect(self.select_all_images)
-        actions_layout.addWidget(self.btn_select_all)
-        
-        self.btn_deselect_all = QPushButton("✗ Deseleccionar todas")
-        self.btn_deselect_all.clicked.connect(self.deselect_all_images)
-        actions_layout.addWidget(self.btn_deselect_all)
-        
-        self.btn_invert_selection = QPushButton("⇄ Invertir selección")
-        self.btn_invert_selection.clicked.connect(self.invert_selection)
-        actions_layout.addWidget(self.btn_invert_selection)
-
-        # Auto-selección inteligente (mantener mejor resolución)
-        self.btn_autoselect_best = QPushButton("⭐ Seleccionar duplicados (mantener mejor)")
-        self.btn_autoselect_best.clicked.connect(self.autoselect_keep_best)
-        actions_layout.addWidget(self.btn_autoselect_best)
-        
-        # Separador
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setProperty("class", "separator")
-        actions_layout.addWidget(separator)
-        
-        # Botones de acción - Título de sección mejorado
-        action_title = QLabel("Operaciones")
-        action_title.setProperty("class", "section-title")
-        actions_layout.addWidget(action_title)
-        
-        self.btn_delete = QPushButton("🗑️ Eliminar seleccionados")
-        self.btn_delete.clicked.connect(self.delete_selected)
-        actions_layout.addWidget(self.btn_delete)
-        
-        self.btn_move = QPushButton("📂 Mover seleccionados")
-        self.btn_move.clicked.connect(self.move_selected)
-        actions_layout.addWidget(self.btn_move)
-        
-        # Estadísticas
+        # Estadísticas (mantenemos en panel derecho)
         self.stats_label = QLabel("No hay resultados")
         self.stats_label.setAlignment(Qt.AlignCenter)
         self.stats_label.setStyleSheet("background-color: #f8f9fa; color: #6c757d; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6;")
-        actions_layout.addWidget(self.stats_label)
-        
-        actions_group.setLayout(actions_layout)
-        right_layout.addWidget(actions_group)
+        right_layout.addWidget(self.stats_label)
         
         # Espacio flexible al final
         right_layout.addStretch()
@@ -739,11 +722,55 @@ class DuplicateFinder(QWidget):
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(left_panel)   # Panel izquierdo: Vista de imágenes
         splitter.addWidget(right_panel)  # Panel derecho: Configuración
-        splitter.setSizes([900, 350])    # Ancho inicial
+        splitter.setSizes([780, 320])    # Ancho inicial equilibrado
         splitter.setCollapsible(0, False) # Panel izquierdo no colapsable
-        splitter.setCollapsible(1, False) # Panel derecho no colapsable
+        splitter.setCollapsible(1, True)  # Panel derecho colapsable
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
         
+        self.splitter = splitter
+        self.right_panel = right_panel
         self.layout.addWidget(splitter)
+
+        # Barra inferior de acciones - textos completos y disposición adaptable
+        bottom_bar = QWidget()
+        bottom_layout = QGridLayout(bottom_bar)
+        bottom_layout.setContentsMargins(10, 8, 10, 8)
+        bottom_layout.setHorizontalSpacing(8)
+        bottom_layout.setVerticalSpacing(6)
+
+        self.btn_select_all = QPushButton("✓ Seleccionar todas")
+        self.btn_select_all.clicked.connect(self.select_all_images)
+
+        self.btn_deselect_all = QPushButton("✗ Deseleccionar todas")
+        self.btn_deselect_all.clicked.connect(self.deselect_all_images)
+
+        self.btn_invert_selection = QPushButton("⇄ Invertir selección")
+        self.btn_invert_selection.clicked.connect(self.invert_selection)
+
+        self.btn_autoselect_best = QPushButton("⭐ Mantener mejor")
+        self.btn_autoselect_best.clicked.connect(self.autoselect_keep_best)
+
+        self.btn_delete = QPushButton("🗑️ Eliminar")
+        self.btn_delete.clicked.connect(self.delete_selected)
+
+        self.btn_move = QPushButton("📂 Mover")
+        self.btn_move.clicked.connect(self.move_selected)
+
+        self.bottom_bar = bottom_bar
+        self.bottom_layout = bottom_layout
+        self.bottom_buttons = [
+            self.btn_select_all,
+            self.btn_deselect_all,
+            self.btn_invert_selection,
+            self.btn_autoselect_best,
+            self.btn_delete,
+            self.btn_move,
+        ]
+
+        # Colocar inicialmente (se reacomoda en resizeEvent)
+        self.arrange_bottom_bar()
+        self.layout.addWidget(bottom_bar)
         
         # Aplicar estilo de negrita y tamaño mayor a los títulos de los QGroupBox
         self.applyGroupBoxTitleStyle()
@@ -755,11 +782,48 @@ class DuplicateFinder(QWidget):
         
         # Variables para paginación
         self.current_page = 1
-        self.groups_per_page = 5
+        self.groups_per_page = 6  # más compacto por página
         self.total_pages = 1
         
         # Forzar la actualización inicial del slider
         self.update_rigidez_label(self.slider.value())
+
+        # Señales de UI compacta
+        self.compact_mode.stateChanged.connect(self.on_compact_changed)
+        self.thumb_size_combo.currentIndexChanged.connect(self.on_thumb_size_changed)
+        # Sin funcionalidad de ocultar panel derecho
+
+    def arrange_bottom_bar(self):
+        # Limpia layout
+        while self.bottom_layout.count():
+            item = self.bottom_layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                self.bottom_layout.removeWidget(w)
+        # Calcular ancho disponible (reserva para bordes)
+        available = max(300, self.width() - 60)
+        row = 0
+        col = 0
+        current_width = 0
+        spacing = self.bottom_layout.horizontalSpacing() or 8
+        for btn in self.bottom_buttons:
+            hint = btn.sizeHint().width()
+            w = hint + spacing
+            if current_width + w > available and col > 0:
+                row += 1
+                col = 0
+                current_width = 0
+            self.bottom_layout.addWidget(btn, row, col)
+            col += 1
+            current_width += w
+
+    # Eliminada funcionalidad de ocultar/mostrar panel derecho
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Reacomodar botones según ancho disponible
+        if hasattr(self, 'bottom_layout'):
+            self.arrange_bottom_bar()
 
     def applyGroupBoxTitleStyle(self):
         # Buscar todos los QGroupBox en la interfaz
@@ -894,8 +958,10 @@ class DuplicateFinder(QWidget):
         
         self.info_label.setText(f"Búsqueda completada: {total_groups} grupos, {total_duplicates} duplicados")
         
+        current_thumb = self.get_current_thumb_size()
+        is_compact = self.compact_mode.isChecked()
         for files in duplicates.values():
-            group_widget = ImageGroupWidget(files)
+            group_widget = ImageGroupWidget(files, thumb_size=current_thumb, compact=is_compact)
             self.group_widgets.append(group_widget)
         
         self.total_pages = max(1, (len(self.group_widgets) + self.groups_per_page - 1) // self.groups_per_page)
@@ -908,6 +974,20 @@ class DuplicateFinder(QWidget):
         
         self.update_stats(total_groups, total_images, total_duplicates)
         self.reset_ui_after_search()
+
+    def get_current_thumb_size(self):
+        idx = self.thumb_size_combo.currentIndex() if hasattr(self, 'thumb_size_combo') else 1
+        return 80 if idx == 0 else (110 if idx == 1 else 140)
+
+    def on_compact_changed(self, state):
+        is_compact = self.compact_mode.isChecked()
+        for gw in self.group_widgets:
+            gw.set_compact(is_compact)
+
+    def on_thumb_size_changed(self, index):
+        size = self.get_current_thumb_size()
+        for gw in self.group_widgets:
+            gw.set_thumb_size(size)
 
     def reset_ui_after_search(self):
         # Restaurar el estado de la interfaz después de la búsqueda
