@@ -544,7 +544,7 @@ class DuplicateFinder(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         
         # Widget contenedor para los grupos
         self.groups_container = QWidget()
@@ -824,6 +824,9 @@ class DuplicateFinder(QWidget):
         # Reacomodar botones según ancho disponible
         if hasattr(self, 'bottom_layout'):
             self.arrange_bottom_bar()
+        # Reacomodar grupos si hay resultados
+        if hasattr(self, 'group_widgets') and self.group_widgets:
+            self.show_page(self.current_page)
 
     def applyGroupBoxTitleStyle(self):
         # Buscar todos los QGroupBox en la interfaz
@@ -1009,6 +1012,7 @@ class DuplicateFinder(QWidget):
         self.worker = None
 
     def show_page(self, page_num):
+        # Limpiar layout
         for i in reversed(range(self.groups_layout.count())): 
             self.groups_layout.itemAt(i).widget().setParent(None)
         
@@ -1185,8 +1189,10 @@ class DuplicateFinder(QWidget):
         self.images = remaining_duplicates
         
         self.group_widgets = []
+        current_thumb = self.get_current_thumb_size()
+        is_compact = self.compact_mode.isChecked()
         for files in remaining_duplicates.values():
-            group_widget = ImageGroupWidget(files)
+            group_widget = ImageGroupWidget(files, thumb_size=current_thumb, compact=is_compact)
             self.group_widgets.append(group_widget)
             
             for file_path in files:
