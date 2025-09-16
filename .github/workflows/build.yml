@@ -22,21 +22,73 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install PyQt5 Pillow imagehash
+        pip install PyQt5 Pillow imagehash pyinstaller
         
-    - name: Install PyInstaller
-      run: pip install pyinstaller
-      
-    - name: List files
+    - name: List files in directory
       run: dir
       
-    - name: Build executable
+    - name: Create PyInstaller spec file
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        echo # -*- mode: python ; coding: utf-8 -*- > duplicados.spec
+        echo block_cipher = None >> duplicados.spec
+        echo. >> duplicados.spec
+        echo a = Analysis( >> duplicados.spec
+        echo     ['duplicados.py'], >> duplicados.spec
+        echo     pathex=[], >> duplicados.spec
+        echo     binaries=[], >> duplicados.spec
+        echo     datas=[], >> duplicados.spec
+        echo     hiddenimports=['PyQt5.sip'], >> duplicados.spec
+        echo     hookspath=[], >> duplicados.spec
+        echo     hooksconfig={}, >> duplicados.spec
+        echo     runtime_hooks=[], >> duplicados.spec
+        echo     excludes=[], >> duplicados.spec
+        echo     win_no_prefer_redirects=False, >> duplicados.spec
+        echo     win_private_assemblies=False, >> duplicados.spec
+        echo     cipher=block_cipher, >> duplicados.spec
+        echo     noarchive=False, >> duplicados.spec
+        echo ) >> duplicados.spec
+        echo. >> duplicados.spec
+        echo pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher) >> duplicados.spec
+        echo. >> duplicados.spec
+        echo exe = EXE( >> duplicados.spec
+        echo     pyz, >> duplicados.spec
+        echo     a.scripts, >> duplicados.spec
+        echo     a.binaries, >> duplicados.spec
+        echo     a.zipfiles, >> duplicados.spec
+        echo     a.datas, >> duplicados.spec
+        echo     [], >> duplicados.spec
+        echo     name='ImageSnapPurge', >> duplicados.spec
+        echo     debug=False, >> duplicados.spec
+        echo     bootloader_ignore_signals=False, >> duplicados.spec
+        echo     strip=False, >> duplicados.spec
+        echo     upx=True, >> duplicados.spec
+        echo     upx_exclude=[], >> duplicados.spec
+        echo     runtime_tmpdir=None, >> duplicados.spec
+        echo     console=False, >> duplicados.spec
+        echo     disable_windowed_traceback=False, >> duplicados.spec
+        echo     argv_emulation=False, >> duplicados.spec
+        echo     target_arch=None, >> duplicados.spec
+        echo     codesign_identity=None, >> duplicados.spec
+        echo     entitlements_file=None, >> duplicados.spec
+        echo ) >> duplicados.spec
         
-    - name: Check if executable was created
-      run: if exist dist\ImageSnapPurge.exe (echo "Executable created successfully") else (echo "Executable not found" && exit 1)
+    - name: Display spec file
+      run: type duplicados.spec
       
+    - name: Build executable using spec file
+      run: pyinstaller duplicados.spec
+      
+    - name: Check if executable was created
+      run: |
+        if exist dist\ImageSnapPurge.exe (
+            echo "Executable created successfully"
+            dir dist\
+        ) else (
+            echo "Executable not found"
+            dir dist\
+            exit 1
+        )
+        
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
       with:
@@ -63,17 +115,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install PyQt5 Pillow imagehash
+        pip install PyQt5 Pillow imagehash pyinstaller
         
-    - name: Install PyInstaller
-      run: pip install pyinstaller
-      
     - name: List files
       run: ls -la
       
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge --hidden-import PyQt5.sip duplicados.py
         
     - name: Check if executable was created
       run: |
@@ -108,17 +157,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install PyQt5 Pillow imagehash
+        pip install PyQt5 Pillow imagehash pyinstaller
         
-    - name: Install PyInstaller
-      run: pip install pyinstaller
-      
     - name: List files
       run: ls -la
       
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge --hidden-import PyQt5.sip duplicados.py
         
     - name: Check if executable was created
       run: |
