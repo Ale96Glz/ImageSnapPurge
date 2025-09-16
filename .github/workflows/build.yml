@@ -22,15 +22,21 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install PyQt5 Pillow imagehash
         
     - name: Install PyInstaller
       run: pip install pyinstaller
       
+    - name: List files
+      run: dir
+      
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge --add-data "resources;resources" duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
         
+    - name: Check if executable was created
+      run: if exist dist\ImageSnapPurge.exe (echo "Executable created successfully") else (echo "Executable not found" && exit 1)
+      
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
       with:
@@ -57,14 +63,26 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install PyQt5 Pillow imagehash
         
     - name: Install PyInstaller
       run: pip install pyinstaller
       
+    - name: List files
+      run: ls -la
+      
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge --add-data "resources:resources" duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        
+    - name: Check if executable was created
+      run: |
+        if [ -f dist/ImageSnapPurge ]; then
+          echo "Executable created successfully"
+        else
+          echo "Executable not found"
+          exit 1
+        fi
         
     - name: Set executable permissions
       run: chmod +x dist/ImageSnapPurge
@@ -90,14 +108,26 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install PyQt5 Pillow imagehash
         
     - name: Install PyInstaller
       run: pip install pyinstaller
       
+    - name: List files
+      run: ls -la
+      
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge --add-data "resources:resources" duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        
+    - name: Check if executable was created
+      run: |
+        if [ -f dist/ImageSnapPurge ]; then
+          echo "Executable created successfully"
+        else
+          echo "Executable not found"
+          exit 1
+        fi
         
     - name: Upload macOS executable
       uses: actions/upload-artifact@v4
