@@ -148,3 +148,58 @@ jobs:
           - ✅ Auto-selección inteligente
         draft: false
         prerelease: false
+
+  create-draft-release:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Create draft release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: latest
+        name: ImageSnapPurge - Latest Build
+        files: |
+          artifacts/ImageSnapPurge-Windows/ImageSnapPurge.exe
+          artifacts/ImageSnapPurge-Linux/ImageSnapPurge
+          artifacts/ImageSnapPurge-macOS/ImageSnapPurge
+        body: |
+          # ImageSnapPurge - Build Latest
+          
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          **Fecha:** ${{ github.event.head_commit.timestamp }}
+          
+          ## Descargas
+          
+          - **ImageSnapPurge.exe**: Ejecutable para Windows
+          - **ImageSnapPurge**: Ejecutable para Linux
+          - **ImageSnapPurge**: Ejecutable para macOS
+          
+          ## Instrucciones
+          
+          1. Descarga el ejecutable correspondiente a tu sistema operativo
+          2. Ejecuta ImageSnapPurge (o ImageSnapPurge.exe en Windows)
+          3. ¡Disfruta de una colección de imágenes libre de duplicados!
+          
+          ## Características
+          
+          - ✅ Detección inteligente de duplicados
+          - ✅ Interfaz moderna y fácil de usar
+          - ✅ Eliminación segura (recuperable desde papelera)
+          - ✅ Múltiples niveles de similitud
+          - ✅ Vista previa de miniaturas
+          - ✅ Auto-selección inteligente
+          
+          **Nota:** Este es un build automático de la rama principal. Para una versión estable, espera a que se publique un release oficial.
+        draft: true
+        prerelease: true
