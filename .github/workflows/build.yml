@@ -6,6 +6,10 @@ on:
     tags: [ 'v*' ]
   workflow_dispatch:
 
+# Agregar permisos explícitos para el workflow
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-2022
@@ -139,6 +143,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-22.04
+    # Agregar permisos explícitos para este job
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
@@ -199,6 +206,9 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-22.04
+    # Agregar permisos explícitos para este job
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
