@@ -3,3 +3,4 @@ Pillow>=9.0
 imagehash>=4.3
 numpy>=1.21
 send2trash>=1.8
+pyinstaller>=5.0
