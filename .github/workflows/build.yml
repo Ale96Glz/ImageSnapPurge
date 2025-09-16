@@ -48,3 +48,221 @@ jobs:
       with:
         name: ImageSnapPurge-Windows
         path: dist/ImageSnapPurge.exe
+
+  build-linux:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-tk libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyQt5 Pillow imagehash pyinstaller
+        
+    - name: List files
+      run: ls -la
+      
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed --name ImageSnapPurge --hidden-import PyQt5.sip duplicados.py
+        
+    - name: Check if executable was created
+      run: |
+        if [ -f dist/ImageSnapPurge ]; then
+          echo "Executable created successfully"
+        else
+          echo "Executable not found"
+          exit 1
+        fi
+        
+    - name: Set executable permissions
+      run: chmod +x dist/ImageSnapPurge
+      
+    - name: Upload Linux executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: ImageSnapPurge-Linux
+        path: dist/ImageSnapPurge
+
+  build-macos:
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyQt5 Pillow imagehash pyinstaller
+        
+    - name: List files
+      run: ls -la
+      
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed --name ImageSnapPurge --hidden-import PyQt5.sip duplicados.py
+        
+    - name: Check if executable was created
+      run: |
+        if [ -f dist/ImageSnapPurge ]; then
+          echo "Executable created successfully"
+        else
+          echo "Executable not found"
+          exit 1
+        fi
+        
+    - name: Upload macOS executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: ImageSnapPurge-macOS
+        path: dist/ImageSnapPurge
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ImageSnapPurge-Windows
+        path: windows-artifact
+        
+    - name: Download Linux artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ImageSnapPurge-Linux
+        path: linux-artifact
+        
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ImageSnapPurge-macOS
+        path: macos-artifact
+        
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          windows-artifact/ImageSnapPurge.exe
+          linux-artifact/ImageSnapPurge
+          macos-artifact/ImageSnapPurge
+        body: |
+          # ImageSnapPurge v${{ github.ref_name }}
+          
+          ## Descargas
+          
+          - **ImageSnapPurge.exe**: Ejecutable para Windows
+          - **ImageSnapPurge**: Ejecutable para Linux
+          - **ImageSnapPurge**: Ejecutable para macOS
+          
+          ## Instrucciones
+          
+          1. Descarga el ejecutable correspondiente a tu sistema operativo
+          2. Ejecuta ImageSnapPurge (o ImageSnapPurge.exe en Windows)
+          3. ¡Disfruta de una colección de imágenes libre de duplicados!
+          
+          ## Características
+          
+          - ✅ Detección inteligente de duplicados
+          - ✅ Interfaz moderna y fácil de usar
+          - ✅ Eliminación segura (recuperable desde papelera)
+          - ✅ Múltiples niveles de similitud
+          - ✅ Vista previa de miniaturas
+          - ✅ Auto-selección inteligente
+        draft: false
+        prerelease: false
+
+  create-auto-release:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ImageSnapPurge-Windows
+        path: windows-artifact
+        
+    - name: Download Linux artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ImageSnapPurge-Linux
+        path: linux-artifact
+        
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ImageSnapPurge-macOS
+        path: macos-artifact
+      
+    - name: Generate version number
+      id: version
+      run: echo "VERSION=$(date +'%Y.%m.%d')-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+      
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        name: ImageSnapPurge v${{ steps.version.outputs.VERSION }}
+        files: |
+          windows-artifact/ImageSnapPurge.exe
+          linux-artifact/ImageSnapPurge
+          macos-artifact/ImageSnapPurge
+        body: |
+          # ImageSnapPurge v${{ steps.version.outputs.VERSION }}
+          
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          **Fecha:** ${{ github.event.head_commit.timestamp }}
+          
+          ## Descargas
+          
+          - **ImageSnapPurge.exe**: Ejecutable para Windows
+          - **ImageSnapPurge**: Ejecutable para Linux
+          - **ImageSnapPurge**: Ejecutable para macOS
+          
+          ## Instrucciones
+          
+          1. Descarga el ejecutable correspondiente a tu sistema operativo
+          2. Ejecuta ImageSnapPurge (o ImageSnapPurge.exe en Windows)
+          3. ¡Disfruta de una colección de imágenes libre de duplicados!
+          
+          ## Características
+          
+          - ✅ Detección inteligente de duplicados
+          - ✅ Interfaz moderna y fácil de usar
+          - ✅ Eliminación segura (recuperable desde papelera)
+          - ✅ Múltiples niveles de similitud
+          - ✅ Vista previa de miniaturas
+          - ✅ Auto-selección inteligente
+          
+          **Nota:** Esta es una versión automática generada desde la rama principal.
+        draft: false
+        prerelease: false
