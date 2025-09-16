@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, master ]
     tags: [ 'v*' ]
-  workflow_dispatch:  # Permite ejecutar manualmente
+  workflow_dispatch:
 
 jobs:
   build-windows:
@@ -29,7 +29,7 @@ jobs:
       
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge --add-data "resources;resources" duplicados.py
         
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
@@ -52,7 +52,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-tk
+        sudo apt-get install -y python3-tk libxcb-cursor0 libxcb-xinerama0 libxcb-xfixes0
         
     - name: Install dependencies
       run: |
@@ -64,8 +64,11 @@ jobs:
       
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge --add-data "resources:resources" duplicados.py
         
+    - name: Set executable permissions
+      run: chmod +x dist/ImageSnapPurge
+      
     - name: Upload Linux executable
       uses: actions/upload-artifact@v4
       with:
@@ -94,7 +97,7 @@ jobs:
       
     - name: Build executable
       run: |
-        pyinstaller --onefile --windowed --name ImageSnapPurge duplicados.py
+        pyinstaller --onefile --windowed --name ImageSnapPurge --add-data "resources:resources" duplicados.py
         
     - name: Upload macOS executable
       uses: actions/upload-artifact@v4
